@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Team Generator Pro</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<style>
+body{background:#0f172a;color:#fff}.card{background:#1e293b;border:1px solid #334155}
+.member{background:#334155;padding:8px;border-radius:8px;cursor:move}
+</style>
+</head>
+<body class="p-6">
+<div class="max-w-7xl mx-auto">
+<h1 class="text-4xl font-bold mb-4">🎲 Team Generator Pro</h1>
+<div class="grid lg:grid-cols-3 gap-4">
+<div class="lg:col-span-2 card p-4 rounded-xl">
+<textarea id="names" class="w-full h-80 bg-slate-900 p-3 rounded" placeholder="Mỗi thành viên một dòng"></textarea>
+</div>
+<div class="card p-4 rounded-xl space-y-3">
+<input id="groups" type="number" min="2" value="3" class="w-full bg-slate-900 p-2 rounded">
+<button class="w-full bg-blue-600 p-3 rounded" onclick="generate()">🎲 Chia nhóm</button>
+<button class="w-full bg-emerald-600 p-3 rounded" onclick="copyResult()">📋 Copy</button>
+<button class="w-full bg-amber-600 p-3 rounded" onclick="exportExcel()">📊 Xuất Excel</button>
+</div></div>
+<div id="result" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6"></div>
+</div>
+<script>
+function shuffle(a){for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}}
+function generate(){
+ let arr=document.getElementById('names').value.split('\n').map(x=>x.trim()).filter(Boolean);
+ let n=Math.max(2,+groups.value||2);shuffle(arr);
+ let teams=[...Array(n)].map(()=>[]);
+ arr.forEach((x,i)=>teams[i%n].push(x));
+ let r=document.getElementById('result');r.innerHTML='';
+ teams.forEach((t,i)=>{
+ r.innerHTML+=`<div class="card p-4 rounded-xl"><div class="flex justify-between"><h2 class="font-bold">Nhóm ${i+1}</h2><span class="count">${t.length} người</span></div><div class="team space-y-2 mt-3">${t.map(x=>`<div class='member'>${x}</div>`).join('')}</div></div>`;
+ });
+ document.querySelectorAll('.team').forEach(el=>new Sortable(el,{group:'g',animation:150,onEnd:updateCounts}));
+ updateCounts();
+}
+function updateCounts(){document.querySelectorAll('.card').forEach(c=>{let ct=c.querySelectorAll('.member').length;let e=c.querySelector('.count');if(e)e.textContent=ct+' người';});}
+function copyResult(){let t='';document.querySelectorAll('#result .card').forEach((c,i)=>{t+='Nhóm '+(i+1)+'\n';c.querySelectorAll('.member').forEach(m=>t+='- '+m.textContent+'\n');t+='\n';});navigator.clipboard.writeText(t);alert('Đã copy');}
+function exportExcel(){
+ const wb=XLSX.utils.book_new();
+ document.querySelectorAll('#result .card').forEach((c,i)=>{
+   const rows=[['STT','Thành viên']];
+   c.querySelectorAll('.member').forEach((m,idx)=>rows.push([idx+1,m.textContent]));
+   const ws=XLSX.utils.aoa_to_sheet(rows);
+   XLSX.utils.book_append_sheet(wb,ws,'Nhóm '+(i+1));
+ });
+ XLSX.writeFile(wb,'ChiaNhom.xlsx');
+}
+document.getElementById('names').value='Nguyễn Văn A\nTrần Văn B\nLê Thị C\nPhạm Văn D\nĐỗ Văn E\nMai Thị F\nHoàng Văn G\nVũ Thị H';
+generate();
+</script>
+</body></html>
