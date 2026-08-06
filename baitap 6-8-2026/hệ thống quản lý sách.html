@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Mượn/Trả Sách Thư Viện</title>
+    <style>
+        /* Căn chỉnh giao diện tổng thể (CSS) */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        /* Căn chỉnh khung nhập liệu */
+        .form-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .form-group > div {
+            flex: 1;
+            min-width: 200px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], input[type="date"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            outline: none;
+        }
+        input[type="text"]:focus, input[type="date"]:focus {
+            border-color: #007bff;
+        }
+        
+        /* Căn chỉnh nút bấm */
+        button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        /* Căn chỉnh bảng hiển thị */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 25px;
+        }
+        th, td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #343a40;
+            color: white;
+        }
+        
+        /* Hiệu ứng cảnh báo quá hạn (Sinh động để chụp ảnh báo cáo) */
+        .overdue {
+            background-color: #ffe6e6; /* Đổ nền đỏ nhạt cho dòng bị quá hạn */
+            color: #cc0000;
+        }
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .badge-ok {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .badge-overdue {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Hệ Thống Quản Lý Thư Viện Mini</h2>
+    
+    <!-- Phần 1: Khung nhập liệu (Input Form) -->
+    <div class="form-group">
+        <div>
+            <label for="studentName">Tên Sinh Viên</label>
+            <input type="text" id="studentName" placeholder="Ví dụ: Nguyễn Văn A">
+        </div>
+        <div>
+            <label for="bookTitle">Tên Sách</label>
+            <input type="text" id="bookTitle" placeholder="Ví dụ: Tư duy nhanh và chậm">
+        </div>
+        <div>
+            <label for="borrowDate">Ngày Mượn</label>
+            <input type="date" id="borrowDate">
+        </div>
+        <div>
+            <label for="dueDate">Ngày Trả Dự Kiến</label>
+            <input type="date" id="dueDate">
+        </div>
+    </div>
+    <button onclick="addRecord()">Thêm Thông Tin Mượn Sách</button>
+
+    <!-- Phần 2: Bảng hiển thị dữ liệu (Data Table) -->
+    <table id="libraryTable">
+        <thead>
+            <tr>
+                <th>Tên Sinh Viên</th>
+                <th>Tên Sách</th>
+                <th>Ngày Mượn</th>
+                <th>Ngày Trả Dự Kiến</th>
+                <th>Trạng Thái</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Các dòng dữ liệu sẽ được JavaScript chèn tự động vào đây -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // Hàm được gọi khi bấm nút "Thêm Thông Tin Mượn Sách"
+    function addRecord() {
+        // Bước 1: Lấy dữ liệu từ các ô nhập liệu
+        const studentName = document.getElementById('studentName').value.trim();
+        const bookTitle = document.getElementById('bookTitle').value.trim();
+        const borrowDate = document.getElementById('borrowDate').value;
+        const dueDate = document.getElementById('dueDate').value;
+
+        // Bước 2: KIỂM THỬ & BẮT LỖI (Phần minh chứng AI đã được dạy cách xử lý lỗi rỗng)
+        if (!studentName || !bookTitle || !borrowDate || !dueDate) {
+            alert("Lỗi nhập liệu: Vui lòng không để trống bất kỳ thông tin nào!");
+            return; // Dừng hàm lại ngay lập tức, không cho phép thêm dữ liệu bẩn
+        }
+
+        // Bước 3: Logic tính toán thông minh - Kiểm tra xem sách đã quá hạn chưa?
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Đặt giờ phút giây về 0 để chỉ so sánh phần Ngày
+        
+        const returnDateObj = new Date(dueDate);
+        let isOverdue = false;
+        
+        if (today > returnDateObj) {
+            isOverdue = true; // Đánh dấu là đã quá hạn
+        }
+
+        // Bước 4: Tạo một hàng (row) mới để chèn vào bảng
+        const tableBody = document.querySelector('#libraryTable tbody');
+        const newRow = document.createElement('tr');
+        
+        // Nếu sách quá hạn, gắn class css 'overdue' để tô màu đỏ dòng đó
+        if (isOverdue) {
+            newRow.className = 'overdue';
+        }
+
+        // Tạo nhãn trạng thái (Badge) tương ứng
+        const statusHtml = isOverdue 
+            ? '<span class="status-badge badge-overdue">Quá hạn</span>' 
+            : '<span class="status-badge badge-ok">Đang mượn</span>';
+
+        // Bước 5: Đổ dữ liệu vào các cột (td) trong hàng
+        newRow.innerHTML = `
+            <td>${studentName}</td>
+            <td>${bookTitle}</td>
+            <td>${formatDate(borrowDate)}</td>
+            <td>${formatDate(dueDate)}</td>
+            <td>${statusHtml}</td>
+        `;
+
+        // Đẩy hàng vừa tạo vào bảng hiển thị
+        tableBody.appendChild(newRow);
+
+        // Bước 6: Dọn dẹp form để sẵn sàng nhập người tiếp theo
+        document.getElementById('studentName').value = '';
+        document.getElementById('bookTitle').value = '';
+        document.getElementById('borrowDate').value = '';
+        document.getElementById('dueDate').value = '';
+    }
+
+    // Hàm tiện ích: Chuyển đổi định dạng ngày từ YYYY-MM-DD sang DD/MM/YYYY cho thân thiện
+    function formatDate(dateString) {
+        const parts = dateString.split('-');
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+</script>
+
+</body>
+</html>
