@@ -1,0 +1,730 @@
+from flask import Flask, request, redirect, render_template_string
+import sqlite3
+
+app = Flask(__name__)
+
+DATABASE = "students.db"
+
+
+# =========================================================
+# DATABASE
+# =========================================================
+
+def get_db():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    conn = get_db()
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS students (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            age INTEGER NOT NULL,
+            email TEXT NOT NULL,
+            class_name TEXT NOT NULL
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+# =========================================================
+# HTML + CSS + JAVASCRIPT
+# =========================================================
+
+HTML = """
+<!DOCTYPE html>
+
+<html lang="vi">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Quản lý sinh viên</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            color: #222;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1100px;
+            margin: 40px auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .form {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        input {
+            padding: 11px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .add-btn {
+            background: #198754;
+            color: white;
+        }
+
+        .search {
+            display: flex;
+            gap: 10px;
+        }
+
+        .search input {
+            flex: 1;
+        }
+
+        .search button {
+            background: #0d6efd;
+            color: white;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background: #f1f1f1;
+        }
+
+        tr:hover {
+            background: #fafafa;
+        }
+
+        .edit-btn {
+            background: #ffc107;
+            color: black;
+        }
+
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+        }
+
+        .actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .edit-form {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .cancel-btn {
+            background: #6c757d;
+            color: white;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 30px;
+            color: #777;
+        }
+
+        @media (max-width: 800px) {
+
+            .form,
+            .edit-form {
+                grid-template-columns: 1fr;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+    <h1>🎓 Quản lý sinh viên</h1>
+
+
+    <!-- ================================================= -->
+    <!-- ADD -->
+    <!-- ================================================= -->
+
+    <div class="card">
+
+        <h2>➕ Thêm sinh viên</h2>
+
+        <form
+            action="/add"
+            method="POST"
+            class="form"
+        >
+
+            <input
+                type="text"
+                name="name"
+                placeholder="Họ và tên"
+                required
+            >
+
+            <input
+                type="number"
+                name="age"
+                placeholder="Tuổi"
+                min="1"
+                max="100"
+                required
+            >
+
+            <input
+                type="email"
+                name="email"
+                placeholder="Email"
+                required
+            >
+
+            <input
+                type="text"
+                name="class_name"
+                placeholder="Lớp"
+                required
+            >
+
+            <button
+                type="submit"
+                class="add-btn"
+            >
+                Thêm sinh viên
+            </button>
+
+        </form>
+
+    </div>
+
+
+    <!-- ================================================= -->
+    <!-- SEARCH -->
+    <!-- ================================================= -->
+
+    <div class="card">
+
+        <h2>🔍 Tìm kiếm</h2>
+
+        <form
+            action="/"
+            method="GET"
+            class="search"
+        >
+
+            <input
+                type="text"
+                name="keyword"
+                value="{{ keyword }}"
+                placeholder="Tên, email hoặc lớp..."
+            >
+
+            <button type="submit">
+                Tìm kiếm
+            </button>
+
+        </form>
+
+    </div>
+
+
+    <!-- ================================================= -->
+    <!-- LIST -->
+    <!-- ================================================= -->
+
+    <div class="card">
+
+        <h2>
+            📋 Danh sách sinh viên
+            ({{ students|length }})
+        </h2>
+
+        <div class="table-container">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>ID</th>
+
+                        <th>Họ tên</th>
+
+                        <th>Tuổi</th>
+
+                        <th>Email</th>
+
+                        <th>Lớp</th>
+
+                        <th>Thao tác</th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                {% for student in students %}
+
+                    <tr>
+
+                        <td>
+                            {{ student["id"] }}
+                        </td>
+
+                        <td>
+                            {{ student["name"] }}
+                        </td>
+
+                        <td>
+                            {{ student["age"] }}
+                        </td>
+
+                        <td>
+                            {{ student["email"] }}
+                        </td>
+
+                        <td>
+                            {{ student["class_name"] }}
+                        </td>
+
+                        <td>
+
+                            <div class="actions">
+
+                                <!-- EDIT -->
+
+                                <button
+                                    class="edit-btn"
+                                    onclick="editStudent(
+                                        {{ student['id'] }},
+                                        {{ student['name']|tojson }},
+                                        {{ student['age'] }},
+                                        {{ student['email']|tojson }},
+                                        {{ student['class_name']|tojson }}
+                                    )"
+                                >
+                                    ✏️ Sửa
+                                </button>
+
+
+                                <!-- DELETE -->
+
+                                <form
+                                    action="/delete/{{ student['id'] }}"
+                                    method="POST"
+                                    onsubmit="return confirm(
+                                        'Bạn có chắc muốn xóa sinh viên này?'
+                                    )"
+                                >
+
+                                    <button
+                                        type="submit"
+                                        class="delete-btn"
+                                    >
+                                        🗑️ Xóa
+                                    </button>
+
+                                </form>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                {% else %}
+
+                    <tr>
+
+                        <td
+                            colspan="6"
+                            class="empty"
+                        >
+                            Chưa có sinh viên nào.
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================= -->
+    <!-- EDIT -->
+    <!-- ================================================= -->
+
+    <div
+        class="card"
+        id="editBox"
+        style="display:none;"
+    >
+
+        <h2>✏️ Chỉnh sửa sinh viên</h2>
+
+        <form
+            id="editForm"
+            method="POST"
+            class="edit-form"
+        >
+
+            <input
+                type="text"
+                id="editName"
+                name="name"
+                placeholder="Họ và tên"
+                required
+            >
+
+            <input
+                type="number"
+                id="editAge"
+                name="age"
+                placeholder="Tuổi"
+                min="1"
+                max="100"
+                required
+            >
+
+            <input
+                type="email"
+                id="editEmail"
+                name="email"
+                placeholder="Email"
+                required
+            >
+
+            <input
+                type="text"
+                id="editClass"
+                name="class_name"
+                placeholder="Lớp"
+                required
+            >
+
+            <button
+                type="submit"
+                class="edit-btn"
+            >
+                💾 Lưu
+            </button>
+
+            <button
+                type="button"
+                class="cancel-btn"
+                onclick="cancelEdit()"
+            >
+                Hủy
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<script>
+
+function editStudent(
+    id,
+    name,
+    age,
+    email,
+    className
+) {
+
+    document.getElementById("editBox")
+        .style.display = "block";
+
+    document.getElementById("editForm")
+        .action = "/edit/" + id;
+
+    document.getElementById("editName")
+        .value = name;
+
+    document.getElementById("editAge")
+        .value = age;
+
+    document.getElementById("editEmail")
+        .value = email;
+
+    document.getElementById("editClass")
+        .value = className;
+
+    document.getElementById("editBox")
+        .scrollIntoView({
+            behavior: "smooth"
+        });
+}
+
+
+function cancelEdit() {
+
+    document.getElementById("editBox")
+        .style.display = "none";
+
+}
+
+</script>
+
+
+</body>
+
+</html>
+"""
+
+
+# =========================================================
+# HOME
+# =========================================================
+
+@app.route("/")
+def index():
+
+    keyword = request.args.get(
+        "keyword",
+        ""
+    ).strip()
+
+    conn = get_db()
+
+    if keyword:
+
+        students = conn.execute("""
+            SELECT *
+            FROM students
+            WHERE name LIKE ?
+               OR email LIKE ?
+               OR class_name LIKE ?
+            ORDER BY id DESC
+        """, (
+            f"%{keyword}%",
+            f"%{keyword}%",
+            f"%{keyword}%"
+        )).fetchall()
+
+    else:
+
+        students = conn.execute("""
+            SELECT *
+            FROM students
+            ORDER BY id DESC
+        """).fetchall()
+
+    conn.close()
+
+    return render_template_string(
+        HTML,
+        students=students,
+        keyword=keyword
+    )
+
+
+# =========================================================
+# ADD
+# =========================================================
+
+@app.route("/add", methods=["POST"])
+def add_student():
+
+    name = request.form.get(
+        "name",
+        ""
+    ).strip()
+
+    age = request.form.get(
+        "age",
+        ""
+    )
+
+    email = request.form.get(
+        "email",
+        ""
+    ).strip()
+
+    class_name = request.form.get(
+        "class_name",
+        ""
+    ).strip()
+
+
+    if name and age and email and class_name:
+
+        conn = get_db()
+
+        conn.execute("""
+            INSERT INTO students
+            (name, age, email, class_name)
+            VALUES (?, ?, ?, ?)
+        """, (
+            name,
+            age,
+            email,
+            class_name
+        ))
+
+        conn.commit()
+        conn.close()
+
+    return redirect("/")
+
+
+# =========================================================
+# EDIT
+# =========================================================
+
+@app.route("/edit/<int:id>", methods=["POST"])
+def edit_student(id):
+
+    name = request.form.get(
+        "name",
+        ""
+    ).strip()
+
+    age = request.form.get(
+        "age",
+        ""
+    )
+
+    email = request.form.get(
+        "email",
+        ""
+    ).strip()
+
+    class_name = request.form.get(
+        "class_name",
+        ""
+    ).strip()
+
+
+    if name and age and email and class_name:
+
+        conn = get_db()
+
+        conn.execute("""
+            UPDATE students
+            SET name = ?,
+                age = ?,
+                email = ?,
+                class_name = ?
+            WHERE id = ?
+        """, (
+            name,
+            age,
+            email,
+            class_name,
+            id
+        ))
+
+        conn.commit()
+        conn.close()
+
+    return redirect("/")
+
+
+# =========================================================
+# DELETE
+# =========================================================
+
+@app.route("/delete/<int:id>", methods=["POST"])
+def delete_student(id):
+
+    conn = get_db()
+
+    conn.execute(
+        "DELETE FROM students WHERE id = ?",
+        (id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/")
+
+
+# =========================================================
+# START
+# =========================================================
+
+if __name__ == "__main__":
+
+    init_db()
+
+    print("=" * 50)
+    print("QUAN LY SINH VIEN")
+    print("=" * 50)
+    print("Website: http://127.0.0.1:5000")
+    print("=" * 50)
+
+    app.run(debug=True)

@@ -1,0 +1,45 @@
+KẾ HOẠCH KIỂM THỬ (TEST PLAN)
+
+TC01: Chức năng bình thường - Thêm mới (Add)
+- Input: Nhập Tên="Nguyễn Văn A", Tuổi=20, Email="a@gmail.com", Lớp="K65". Bấm "Thêm sinh viên".
+- Expected Output: Hệ thống lưu dữ liệu vào cơ sở dữ liệu, chuyển hướng về trang chủ (/) và hiển thị sinh viên vừa thêm ở cuối danh sách[cite: 1].
+
+TC02: Chức năng bình thường - Tìm kiếm (Search)
+- Input: Ô tìm kiếm nhập: "a@gmail.com". Bấm "Tìm kiếm".
+- Expected Output: Bảng danh sách chỉ hiển thị dòng có chứa email "a@gmail.com", thanh địa chỉ đổi thành /?keyword=a%40gmail.com[cite: 1].
+
+TC03: Chức năng bình thường - Xóa (Delete)
+- Input: Bấm nút Xóa ở sinh viên ID = 1. Chọn "OK" ở popup xác nhận.
+- Expected Output: Hệ thống xóa bản ghi ID = 1 trong cơ sở dữ liệu, tải lại trang và sinh viên này biến mất khỏi danh sách[cite: 1].
+
+TC04: Dữ liệu sai/rỗng - Thêm mới (Add)
+- Input: Bỏ qua chặn HTML, gửi POST thẳng đến /add với Input: Tên=" ", Tuổi=20, Email="a@gmail.com", Lớp="K65".
+- Expected Output: Hàm .strip() trong backend cắt hết khoảng trắng thành chuỗi rỗng[cite: 1]. Điều kiện kiểm tra dữ liệu bị sai nên không chèn vào cơ sở dữ liệu, hệ thống chuyển hướng về trang chủ không báo lỗi[cite: 1].
+
+TC05: Dữ liệu sai/rỗng - Sửa (Edit)
+- Input: Trên form UI, nhập Email="không-phải-email". Bấm "Lưu".
+- Expected Output: Giao diện HTML5 chặn lại không cho submit form do trường input có thuộc tính type="email"[cite: 1].
+
+TC06: Boundary (Biên) - Thêm mới (Add)
+- Input: Nhập Tuổi = 1 (Cận dưới). Các trường khác nhập hợp lệ.
+- Expected Output: Dữ liệu hợp lệ do thỏa mãn điều kiện min="1", hệ thống thêm thành công[cite: 1].
+
+TC07: Boundary (Biên) - Thêm mới (Add)
+- Input: Nhập Tuổi = 100 (Cận trên). Các trường khác nhập hợp lệ.
+- Expected Output: Dữ liệu hợp lệ do thỏa mãn điều kiện max="100", hệ thống thêm thành công[cite: 1].
+
+TC08: Boundary (Biên) - Thêm mới (Add)
+- Input: Nhập Tuổi = 101. Các trường khác nhập hợp lệ.
+- Expected Output: Trình duyệt chặn submit form và báo lỗi giá trị phải nhỏ hơn hoặc bằng 100 do giới hạn max="100" trên HTML[cite: 1].
+
+TC09: Edge Case (Góc) - Tìm kiếm (Search)
+- Input: Nhập từ khóa: % hoặc _ (Các ký tự wildcard của SQL).
+- Expected Output: Do truy vấn dùng tham số hóa an toàn LIKE ?[cite: 1], hệ thống không bị lỗi cú pháp SQL (SQL Injection) mà trả về danh sách chứa các ký tự này một cách bình thường.
+
+TC10: Error Handling - Sửa (Edit)
+- Input: Gửi POST request đến /edit/9999 (ID không tồn tại) kèm dữ liệu hợp lệ.
+- Expected Output: Câu lệnh UPDATE chạy nhưng không tác động đến dòng nào. Hệ thống không bị crash (không lỗi 500), tự động chuyển hướng về trang chủ /[cite: 1].
+
+TC11: Error Handling - Xóa (Delete)
+- Input: Sửa URL, gửi POST request đến /delete/abc (truyền chuỗi thay vì số nguyên).
+- Expected Output: Do route yêu cầu chuẩn <int:id>[cite: 1], Flask sẽ bắt lỗi ngay ở router và trả về trang HTTP 404 Not Found (thay vì làm sập server).
